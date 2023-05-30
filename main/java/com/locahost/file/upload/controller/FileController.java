@@ -14,7 +14,7 @@ import java.io.RandomAccessFile;
 @RequestMapping("/file")
 public class FileController {
 
-    private final String FILE_PATH = "D:\\Projects\\manage_exercise_projects\\segmented_file_upload\\segmented_file_upload\\src\\main\\resources\\static\\file\\";
+    private final String FILE_PATH = "D:\\file\\";
 
     @PostMapping("/upload")
     public void upload(UploadFile file){
