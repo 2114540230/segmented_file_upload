@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <!-- 开发环境版本，包含了有帮助的命令行警告 -->
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <!-- 官网提供的 axios 在线地址 -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<div id="app">
+    <template>
+        <div>
+            <h2>上传文件</h2>
+            <form>
+                <input type="file" @change="selectFile" ref="fileInput">
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" :style="'width:' + progress + '%'"
+                         aria-valuenow="progress" :aria-valuemin="0" aria-valuemax="100">{{progress}}%
+                    </div>
+                </div>
+                <button class="btn btn-primary" @click.prevent="upload">开始上传</button>
+            </form>
+        </div>
+    </template>
+</div>
+<script>
+    new Vue({
+        el: "#app",
+        data() {
+            return {
+                progress: 0,
+                selectedFile: null,
+                fileUrl: null,
+                chunkSize: 1024 * 1024 * 2, //2MB，每个切片大小
+                numChunks: 0,
+                uploadedChunks: 0,
+                chunks: [], //切片数组
+                status: "未上传" //上传状态
+            }
+        },
+        methods: {
+            selectFile(event) {
+                this.selectedFile = event.target.files[0];
+                this.fileUrl = URL.createObjectURL(this.selectedFile);
+                this.numChunks = Math.ceil(this.selectedFile.size / this.chunkSize);
+                for (let i = 0; i < this.numChunks; i++) {
+                    this.chunks.push({
+                        index: i,
+                        data: null,
+                        status: "待上传"
+                    });
+                }
+            },
+            async upload() {
+                this.progress = 0;
+                this.status = "上传中";
+                for (let i = 0; i < this.numChunks; i++) {
+                    const startIndex = i * this.chunkSize;
+                    const endIndex =
+                        i * this.chunkSize + Math.min(this.chunkSize, this.selectedFile.size - i * this.chunkSize);
+                    const chunk = this.selectedFile.slice(startIndex, endIndex);
+                    await this.uploadChunk(chunk, i);
+                }
+                this.status = "已上传";
+            },
+            async uploadChunk(chunk, index) {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    const formData = new FormData();
+                    //文件名称
+                    formData.append("name", this.selectedFile.name);
+                    //分段上传的索引
+                    formData.append("index", index);
+                    //分段 每段的长度
+                    formData.append("length", this.chunkSize);
+                    //文件
+                    formData.append("file", chunk);
+                    //上传的路径
+                    xhr.open("POST", "/file/upload");
+                    xhr.setRequestHeader("Authorization", "Bearer " + localStorage.getItem("token"));
+                    xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+                    xhr.upload.addEventListener("progress", event => {
+                        const progress = event.loaded / event.total;
+                        this.progress = Math.round((this.uploadedChunks + progress) / this.numChunks * 100);
+                    });
+                    xhr.onload = () => {
+                        if (xhr.status === 200) {
+                            this.uploadedChunks++;
+                            this.chunks[index].status = "已上传";
+                            resolve();
+                        } else {
+                            this.chunks[index].status = "上传失败";
+                            reject();
+                        }
+                    };
+                    xhr.send(formData);
+                });
+            }
+        }
+    });
+</script>
+</body>
+</html>

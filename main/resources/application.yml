@@ -1,0 +1,7 @@
+server:
+  port: 8888
+spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB # 指定上载文件允许的最大大小 默认值为1MB
+      max-request-size: 100MB # 请求允许的最大大小。 默认值为10MB。
